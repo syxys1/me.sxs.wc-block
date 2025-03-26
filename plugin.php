@@ -109,15 +109,26 @@ function custom_product_collection_render_block($attributes) {
     $accordion_caret_color = $attributes['accordionCaretColor'];
     $accordion_caret_image = $attributes['accordionCaretImage'];
 
-
-    // Fetch categories in hierarchical order
-    $categories = get_terms(array(
-        'taxonomy' => 'product_cat',
-        'hide_empty' => true,
-        'exclude' => $exclude_categories,
-        'orderby' => 'name',
+    // Une seule requête pour tous les produits
+    $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => -1,
+        'post_status' => 'publish',
+        'orderby' => $attributes['orderBy'],
         'order' => $order,
-    ));
+        'tax_query' => array(
+            array(
+                'taxonomy' => 'product_cat',
+                'field' => 'term_id',
+                'operator' => 'NOT IN',
+                'terms' => $exclude_categories
+            )
+        )
+    );
+
+    $products = new WP_Query($args);
+    $current_category = '';
+    $current_subcategory = '';
 
     ob_start();
     ?>
@@ -173,68 +184,71 @@ function custom_product_collection_render_block($attributes) {
             }
         </style>
 
-        <?php foreach ($categories as $category) : ?>
-            <!-- Accordion View -->
-            <div class="accordion-title" data-accordion-target="<?php echo esc_attr($category->term_id); ?>">
-                <span class="accordion-caret"></span>
-                <span><?php echo esc_html($category->name); ?></span>
-            </div>
-            
-            <div class="accordion-content" id="accordion-content-<?php echo esc_attr($category->term_id); ?>">
-                <div class="category-title">
-                    <?php if ($show_subcategories) : ?>
-                        <h3><?php echo esc_html($category->name); ?></h3>
-                    <?php endif; ?>
-                </div>
-                <div class="category-separator">
-                    <hr />
-                </div>
+        <div class="product-categories">
+        <?php 
+        if ($products->have_posts()) :
+            while ($products->have_posts()) : $products->the_post();
+                global $product;
+                
+                // Récupérer les catégories du produit
+                $terms = get_the_terms($product->get_id(), 'product_cat');
+                if (!$terms) continue;
+                
+                // Trier les catégories par niveau hiérarchique
+                $categories = array();
+                foreach ($terms as $term) {
+                    $categories[$term->parent ? 'sub' : 'main'] = $term;
+                }
+                
+                $main_cat = isset($categories['main']) ? $categories['main'] : null;
+                $sub_cat = isset($categories['sub']) ? $categories['sub'] : null;
 
-                <!-- Products directly in the category -->
-                <div class="product-grid" style="grid-template-columns: repeat(<?php echo esc_attr($attributes['columns']); ?>, 1fr);">
-                    <?php
-                    $args = array(
-                        'post_type' => 'product',
-                        'posts_per_page' => -1,
-                        'post_status' => 'publish',
-                        'orderby' => $attributes['orderBy'],
-                        'order' => $order,
-                        'tax_query' => array(
-                            array(
-                                'taxonomy' => 'product_cat',
-                                'field' => 'term_id',
-                                'terms' => $category->term_id,
-                            ),
-                        ),
-                    );
-
-                    $products = new WP_Query($args);
-
-                    if ($products->have_posts()) :
-                        while ($products->have_posts()) :
-                            $products->the_post();
-                            global $product; ?>
-                            <div class="product-item">
-                                <a href="<?php the_permalink(); ?>">
-                                    <?php the_post_thumbnail('medium'); ?>
-                                    <h5><?php the_title(); ?></h5>
-                                    <?php if ($show_price) : ?>
-                                        <p><?php echo $product->get_price_html(); ?></p>
-                                    <?php endif; ?>
-                                    <?php if ($show_add_to_cart) : ?>
-                                        <button><?php _e('Add to Cart', 'custom-product-collection'); ?></button>
-                                    <?php endif; ?>
-                                </a>
-                            </div>
-                        <?php endwhile;
-                        else : ?>
-                            <p><?php _e('No products found in this category.', 'custom-product-collection'); ?></p>
-                        <?php endif; ?>
-                        <?php wp_reset_postdata(); ?>
+                // Nouvelle catégorie principale
+                if ($main_cat && $current_category !== $main_cat->term_id) :
+                    if ($current_category !== '') : ?>
+                        </div></div>
+                    <?php endif; 
+                    $current_category = $main_cat->term_id;
+                    $current_subcategory = '';
+                    ?>
+                    <div class="accordion-title" data-accordion-target="<?php echo esc_attr($main_cat->term_id); ?>">
+                        <span class="accordion-caret"></span>
+                        <span><?php echo esc_html($main_cat->name); ?></span>
                     </div>
+                    <div class="accordion-content" id="accordion-content-<?php echo esc_attr($main_cat->term_id); ?>">
+                        <div class="product-grid" style="grid-template-columns: repeat(<?php echo esc_attr($attributes['columns']); ?>, 1fr);">
+                <?php endif;
+
+                // Nouvelle sous-catégorie
+                if ($sub_cat && $current_subcategory !== $sub_cat->term_id) :
+                    $current_subcategory = $sub_cat->term_id;
+                    if ($show_subcategories) : ?>
+                        <div class="category-title">
+                            <h3><?php echo esc_html($sub_cat->name); ?></h3>
+                        </div>
+                    <?php endif;
+                endif; ?>
+
+                <div class="product-item">
+                    <a href="<?php the_permalink(); ?>">
+                        <?php the_post_thumbnail('medium'); ?>
+                        <h5><?php the_title(); ?></h5>
+                        <?php if ($show_price) : ?>
+                            <p><?php echo $product->get_price_html(); ?></p>
+                        <?php endif; ?>
+                        <?php if ($show_add_to_cart) : ?>
+                            <button><?php _e('Add to Cart', 'custom-product-collection'); ?></button>
+                        <?php endif; ?>
+                    </a>
                 </div>
-            </div>
-        <?php endforeach; ?>
+
+            <?php endwhile;
+            if ($current_category !== '') : ?>
+                </div></div>
+            <?php endif;
+        endif;
+        wp_reset_postdata(); ?>
+        </div>
     </div>
 
     <script>
