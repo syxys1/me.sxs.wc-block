@@ -107,6 +107,7 @@ function custom_product_collection_render_block($attributes) {
     $accordion_title_font_size = $attributes['accordionTitleFontSize'];
     $accordion_title_font_color = $attributes['accordionTitleFontColor'];
     $accordion_caret_color = $attributes['accordionCaretColor'];
+    $accordion_caret_image = $attributes['accordionCaretImage'];
 
 
     // Fetch categories in hierarchical order
@@ -136,20 +137,30 @@ function custom_product_collection_render_block($attributes) {
                 border: <?php echo esc_attr($product_border_style); ?> solid <?php echo esc_attr($product_border_color); ?>;
             }
             .accordion-title {
-                font-size: <?php echo esc_attr($accordion_title_font_size); ?>px;
+                font-size: 2em; /* Correspond à la taille d'un H2 */
                 color: <?php echo esc_attr($accordion_title_font_color); ?>;
                 display: flex;
-                justify-content: space-between;
+                justify-content: flex-start;
                 align-items: center;
                 cursor: pointer;
                 padding: 10px 15px;
-                background-color: #f9f9f9;
-                border: 1px solid #ddd;
-                border-radius: 5px;
+                background-color: transparent; /* Fond transparent */
+                border: none;
+                border-radius: 0;
+                font-weight: bold; /* Titre en gras */
+                border-bottom: 1px solid <?php echo esc_attr($separator_color); ?>; /* Trait sous la catégorie */
             }
             .accordion-caret {
                 color: <?php echo esc_attr($accordion_caret_color); ?>;
-                margin-left: 10px;
+                margin-right: 10px;
+                <?php if ($accordion_caret_image) : ?>
+                    background-image: url('<?php echo esc_url($accordion_caret_image); ?>');
+                    background-size: contain;
+                    background-repeat: no-repeat;
+                    width: 20px;
+                    height: 20px;
+                    transition: transform 0.3s ease;
+                <?php endif; ?>
             }
             .accordion-content {
                 display: none; /* Hidden by default */
@@ -162,18 +173,18 @@ function custom_product_collection_render_block($attributes) {
             }
         </style>
 
-        </style>
-
         <?php foreach ($categories as $category) : ?>
             <!-- Accordion View -->
             <div class="accordion-title" data-accordion-target="<?php echo esc_attr($category->term_id); ?>">
+                <span class="accordion-caret"></span>
                 <span><?php echo esc_html($category->name); ?></span>
-                <span class="accordion-caret">&#9660;</span> <!-- ▼ by default -->
             </div>
             
             <div class="accordion-content" id="accordion-content-<?php echo esc_attr($category->term_id); ?>">
                 <div class="category-title">
-                    <h3><?php echo esc_html($category->name); ?></h3>
+                    <?php if ($show_subcategories) : ?>
+                        <h3><?php echo esc_html($category->name); ?></h3>
+                    <?php endif; ?>
                 </div>
                 <div class="category-separator">
                     <hr />
@@ -235,10 +246,10 @@ function custom_product_collection_render_block($attributes) {
 
                 if (content.classList.contains('open')) {
                     content.classList.remove('open');
-                    caret.innerHTML = '&#9660;'; // Down caret
+                    caret.style.transform = 'rotate(0deg)';
                 } else {
                     content.classList.add('open');
-                    caret.innerHTML = '&#9650;'; // Up caret
+                    caret.style.transform = 'rotate(90deg)';
                 }
             });
         });

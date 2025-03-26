@@ -1,6 +1,6 @@
 import { registerBlockType } from '@wordpress/blocks';
 import { __ } from '@wordpress/i18n';
-import { useBlockProps, InspectorControls } from '@wordpress/block-editor';
+import { useBlockProps, InspectorControls, MediaUpload, MediaUploadCheck } from '@wordpress/block-editor';
 import { PanelBody, SelectControl, ToggleControl, RangeControl, ColorPicker, TextControl } from '@wordpress/components';
 
 registerBlockType('custom-product-collection/block', {
@@ -28,6 +28,7 @@ registerBlockType('custom-product-collection/block', {
         accordionTitleFontSize: { type: 'number', default: 18 },
         accordionTitleFontColor: { type: 'string', default: '#333' },
         accordionCaretColor: { type: 'string', default: '#000' },
+        accordionCaretImage: { type: 'string', default: '' },
     },
 
     edit: ({ attributes, setAttributes }) => {
@@ -36,7 +37,7 @@ registerBlockType('custom-product-collection/block', {
             titleFontSize, titleFontColor, separatorColor, separatorThickness,
             showPrice, showAddToCart, productFontSize, productMargin,
             productBorderColor, productBorderStyle,
-            accordionTitleFontSize, accordionTitleFontColor, accordionCaretColor,
+            accordionTitleFontSize, accordionTitleFontColor, accordionCaretColor, accordionCaretImage,
         } = attributes;
 
         const blockProps = useBlockProps();
@@ -115,6 +116,20 @@ registerBlockType('custom-product-collection/block', {
                             value={accordionCaretColor}
                             onChange={(newColor) => setAttributes({ accordionCaretColor: newColor })}
                         />
+                        <MediaUploadCheck>
+                            <MediaUpload
+                                onSelect={(media) => setAttributes({ accordionCaretImage: media.url })}
+                                allowedTypes={['image']}
+                                render={({ open }) => (
+                                    <button onClick={open}>
+                                        {__('Select Caret Image', 'custom-product-collection')}
+                                    </button>
+                                )}
+                            />
+                        </MediaUploadCheck>
+                        {accordionCaretImage && (
+                            <img src={accordionCaretImage} alt={__('Caret Image', 'custom-product-collection')} style={{ width: '20px', height: '20px' }} />
+                        )}
                     </PanelBody>
 
                     <PanelBody title={__('Category Settings', 'custom-product-collection')} initialOpen={false}>
