@@ -1,0 +1,109 @@
+<?php
+/**
+ * Plugin Name: Custom Product Collection Block
+ * Description: A block to display products by category without using the REST API.
+ * Version: 1.0
+ * Author: Sylvain
+ * License: GPL-3.0-or-later
+ * Text Domain: custom-product-collection
+ */
+
+defined('ABSPATH') || exit;
+
+// Register and enqueue block assets.
+function custom_product_collection_register_block() {
+    wp_register_script(
+        'custom-product-collection-editor',
+        plugins_url('build/index.js', __FILE__),
+        array('wp-blocks', 'wp-i18n', 'wp-element', 'wp-editor'),
+        filemtime(plugin_dir_path(__FILE__) . 'build/index.js')
+    );
+
+    wp_register_style(
+        'custom-product-collection-editor',
+        plugins_url('src/editor.css', __FILE__),
+        array('wp-edit-blocks'),
+        filemtime(plugin_dir_path(__FILE__) . 'src/editor.css')
+    );
+
+    wp_register_style(
+        'custom-product-collection-style',
+        plugins_url('src/style.css', __FILE__),
+        array(),
+        filemtime(plugin_dir_path(__FILE__) . 'src/style.css')
+    );
+
+    register_block_type('custom-product-collection/block', array(
+        'editor_script' => 'custom-product-collection-editor',
+        'editor_style'  => 'custom-product-collection-editor',
+        'style'         => 'custom-product-collection-style',
+        'render_callback' => 'custom_product_collection_render_block',
+        'attributes' => array(
+            'category' => array(
+                'type' => 'string',
+                'default' => '',
+            ),
+            'title' => array(
+                'type' => 'string',
+                'default' => 'Featured Products',
+            ),
+        ),
+    ));
+}
+add_action('init', 'custom_product_collection_register_block');
+
+// Render the block dynamically using PHP queries.
+function custom_product_collection_render_block($attributes) {
+    $category = $attributes['category'];
+    $title = $attributes['title'];
+
+    // Fetch category ID if the category slug is provided.
+    $category_id = get_term_by('slug', $category, 'product_cat');
+    if ($category_id) {
+        $category_id = $category_id->term_id;
+    }
+
+    // Query WooCommerce products for the category.
+    $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => -1,
+        'tax_query' => array(
+            array(
+                'taxonomy' => 'product_cat',
+                'field' => 'term_id',
+                'terms' => $category_id,
+            ),
+        ),
+    );
+
+    $query = new WP_Query($args);
+
+    ob_start();
+    ?>
+    <div class="custom-product-collection-block">
+        <h2><?php echo esc_html($title); ?></h2>
+        <div class="product-grid">
+            <?php
+            if ($query->have_posts()) {
+                while ($query->have_posts()) {
+                    $query->the_post();
+                    global $product; ?>
+                    <div class="product-item">
+                        <a href="<?php the_permalink(); ?>">
+                            <?php the_post_thumbnail('medium'); ?>
+                            <h3><?php the_title(); ?></h3>
+                            <p><?php echo $product->get_price_html(); ?></p>
+                        </a>
+                    </div>
+                    <?php
+                }
+            } else {
+                echo '<p>' . __('No products found.', 'custom-product-collection') . '</p>';
+            }
+            ?>
+        </div>
+    </div>
+    <?php
+    wp_reset_postdata();
+    return ob_get_clean();
+}

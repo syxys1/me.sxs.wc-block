@@ -1,0 +1,17 @@
+{
+  "name": "me.sxs.wc-block",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": { 
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "GPL-3.0-or-later",
+  "description": "Custom Product Collection Block for WooCommerce.",
+  "devDependencies": {
+    "@wordpress/scripts": "^30.7.0"
+  }
+}
